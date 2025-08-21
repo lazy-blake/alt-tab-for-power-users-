@@ -54,4 +54,4 @@ Pull requests are welcome! If you have suggestions for new features, feel free t
 
 ## 📜 License
 
-MIT License – free to use, modify, and share.
+[MIT License](LICENSE) – free to use, modify, and share.
