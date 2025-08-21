@@ -1,4 +1,4 @@
-# 🔄 Rewrited Alt+Tab to save 0.1 sec (AutoHotkey)
+# 🔄 Because 0.1s Matters – Alt+Tab Rewritten (AutoHotkey)
 
 A lightweight AutoHotkey script that improves Windows app switching.  
 Instead of cycling endlessly with `Alt + Tab`, you can **jump directly** to any app by pressing:
