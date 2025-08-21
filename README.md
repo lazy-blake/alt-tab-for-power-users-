@@ -32,8 +32,8 @@ For example:
    git clone https://github.com/YOUR_USERNAME/alt-tab-enhancer.git
 
 or just click **Code → Download ZIP**.
-3\. Run `alt_tab_enhanced.ahk` (double-click it).
-4\. Enjoy faster window switching!
+3. Run `alt_tab_enhanced.ahk` (double-click it).
+4. Enjoy faster window switching!
 
 ---
 
