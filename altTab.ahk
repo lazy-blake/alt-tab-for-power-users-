@@ -1,3 +1,7 @@
+; Smart Alt+Letter Window Switcher for AutoHotkey v2 
+; Press Alt + first letter of program to jump directly to that window
+; Press Ctrl+Alt+L to list all windows (for debugging)
+
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 SendMode "Input"
@@ -34,12 +38,35 @@ IsValidWindow(windowID) {
     }
 }
 
-; Function to get program name from title or process name
+; Function to get clean program name from title or process name
 GetProgramName(windowID, title) {
+    ; First check for specific app patterns by title (for UWP/Store apps)
+    titlePatterns := Map(
+        "WhatsApp", "WhatsApp",
+        "DaVinci Resolve", "DaVinci Resolve",
+        "Microsoft Store", "Store", 
+        "Calculator", "Calculator",
+        "Settings", "Settings",
+        "Mail", "Mail",
+        "Calendar", "Calendar",
+        "Photos", "Photos",
+        "Movies & TV", "Movies"
+    )
+    
+    ; Check if title matches any known patterns
+    for pattern, friendlyName in titlePatterns {
+        if (RegExMatch(title, "i)" . pattern)) {
+            return friendlyName
+        }
+    }
+    
+    ; Try to get the process name
     try {
         processName := WinGetProcessName("ahk_id " windowID)
+        ; Remove .exe extension
         processName := RegExReplace(processName, "\.exe$", "", &count)
         
+        ; Map common process names to readable names
         processMap := Map(
             "chrome", "Chrome",
             "firefox", "Firefox", 
@@ -52,22 +79,35 @@ GetProgramName(windowID, title) {
             "cmd", "Command Prompt",
             "powershell", "PowerShell",
             "WindowsTerminal", "Terminal",
-            "zen", "Zen Browser"
+            "zen", "Zen Browser",
+            "Resolve", "DaVinci Resolve"
         )
-      
+        
+        ; Check if we have a mapped name
         for processKey, mappedName in processMap {
             if (RegExMatch(processName, "i)" . processKey)) {
                 return mappedName
             }
         }
-       
+        
+        ; Skip generic container processes and use title cleaning instead
+        genericProcesses := ["ApplicationFrameHost", "dwm", "winlogon", "csrss", "svchost"]
+        for genericProcess in genericProcesses {
+            if (RegExMatch(processName, "i)^" . genericProcess . "$")) {
+                ; Fall through to title cleaning
+                break
+            }
+        }
+        
+        ; If process name looks good, use it
         if (processName != "" && !RegExMatch(processName, "^(dwm|winlogon|csrss|svchost)")) {
             return processName
         }
     } catch {
-        
+        ; Fall back to title cleaning
     }
     
+    ; Fall back to cleaning the title
     cleanTitle := title
     
     ; Common patterns to clean up
@@ -83,7 +123,10 @@ GetProgramName(windowID, title) {
         "^(.+) - Visual Studio Code$",
         "^(.+) - Zen Browser$",
         "^\[.+\] (.+)$",  ; Remove [brackets] prefix
-        "^(.+) \([0-9]+\)$"  ; Remove (1), (2) etc
+        "^(.+) \([0-9]+\)$",  ; Remove (1), (2) etc
+        "^(.+) \(Normal\)$",  ; Remove (Normal) status
+        "^(.+) \(Maximized\)$",  ; Remove (Maximized) status
+        "^(.+) \(Minimized\)$"  ; Remove (Minimized) status
     ]
     
     for pattern in patterns {
@@ -124,13 +167,16 @@ ListAllWindows() {
         }
     }
     
+    ; Show in a message box
     MsgBox(output, "Window List (" count " windows)")
 }
 
+; function to switch windows
 SwitchToWindowByLetter(letter) {
     windows := WinGetList()
     matchingWindows := []
     
+    ; Loop through all windows
     for windowID in windows {
         if (IsValidWindow(windowID)) {
             try {
@@ -138,6 +184,7 @@ SwitchToWindowByLetter(letter) {
                 programName := GetProgramName(windowID, title)
                 firstLetter := SubStr(programName, 1, 1)
                 
+                ; Check if first letter matches (case insensitive)
                 if (firstLetter != "" && RegExMatch(firstLetter, "i)^" . letter . "$")) {
                     matchingWindows.Push({
                         id: windowID, 
@@ -169,12 +216,13 @@ SwitchToWindowByLetter(letter) {
             }
         }
         
+        ; Switch to next matching window (or first if current not in matches)
         nextIndex := currentIndex >= matchingWindows.Length ? 1 : currentIndex + 1
         targetWindow := matchingWindows[nextIndex]
         
         ; Activate the target window
         try {
-          
+            ; If window is minimized, restore it first
             minMax := WinGetMinMax("ahk_id " targetWindow.id)
             if (minMax == -1) {
                 WinRestore("ahk_id " targetWindow.id)
@@ -182,6 +230,7 @@ SwitchToWindowByLetter(letter) {
             
             WinActivate("ahk_id " targetWindow.id)
             
+            ; Show tooltip with program name and status
             status := minMax == -1 ? " (was minimized)" : ""
             ToolTip("→ " . targetWindow.programName . status . " (" . matchingWindows.Length . " matches)")
             SetTimer(() => ToolTip(), -2000)
@@ -190,12 +239,13 @@ SwitchToWindowByLetter(letter) {
             SetTimer(() => ToolTip(), -1000)
         }
     } else {
+        ; Show debug info about what windows we found
         ToolTip('No windows found starting with "' . letter . '". Press Ctrl+Alt+L to see all windows.')
         SetTimer(() => ToolTip(), -3000)
     }
 }
 
-; Debug hotkey to list all windows
+; to list all windows
 ^!l::ListAllWindows()
 
 ; Hotkeys for Alt + Letter combinations
